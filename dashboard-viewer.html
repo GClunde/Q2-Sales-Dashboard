@@ -1,0 +1,170 @@
+<!DOCTYPE html><html lang="en"><head><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q2 Sales Dashboard Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .dashboard-wrapper {
+            width: 100%;
+            height: 800px;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #5e35b1;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #4527a0;
+        }
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8eaf6;
+            border-radius: 8px;
+            border-left: 4px solid #5e35b1;
+        }
+        h1 {
+            color: #5e35b1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Q2 Sales Dashboard Viewer</h1>
+        
+        <iframe id="dashboardFrame" class="dashboard-wrapper" src="https://gclunde.github.io/Q2-Sales-Dashboard/"></iframe>
+        
+        <div class="controls">
+            <button id="saveBtn">Save Current Dashboard State</button>
+            <button id="loadBtn">Load Saved Dashboard State</button>
+            <button id="resetBtn">Reset to Default</button>
+        </div>
+        
+        <div class="instructions">
+            <h3>How to use this page:</h3>
+            <ol>
+                <li>Make your changes to the dashboard using the control panel</li>
+                <li>Click "Save Current Dashboard State" to store your changes</li>
+                <li>When you return later, click "Load Saved Dashboard State" to restore your changes</li>
+                <li>Use "Reset to Default" to clear all saved changes</li>
+            </ol>
+            <p><strong>Note:</strong> Changes are stored in your browser only. If you use a different browser or device, you'll need to make the changes again.</p>
+        </div>
+    </div>
+
+    <script>
+        // Get references to elements
+        const dashboardFrame = document.getElementById('dashboardFrame');
+        const saveBtn = document.getElementById('saveBtn');
+        const loadBtn = document.getElementById('loadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Wait for iframe to load
+        dashboardFrame.addEventListener('load', function() {
+            // Check if we have stored data to auto-load
+            if (localStorage.getItem('dashboardData')) {
+                loadSavedState();
+            }
+        });
+
+        // Save current state
+        saveBtn.addEventListener('click', function() {
+            try {
+                const dashboardWindow = dashboardFrame.contentWindow;
+                const dashboardDocument = dashboardFrame.contentDocument || dashboardFrame.contentWindow.document;
+                
+                // Get all input values from the dashboard
+                const inputs = dashboardDocument.querySelectorAll('input');
+                const data = {};
+                
+                inputs.forEach(input => {
+                    if (input.id) {
+                        data[input.id] = input.value;
+                    }
+                });
+                
+                // Store in localStorage
+                localStorage.setItem('dashboardData', JSON.stringify(data));
+                alert('Dashboard state saved successfully!');
+            } catch (error) {
+                console.error('Error saving dashboard state:', error);
+                alert('Could not save dashboard state. This might be due to cross-origin restrictions.');
+            }
+        });
+
+        // Load saved state
+        loadBtn.addEventListener('click', function() {
+            loadSavedState();
+        });
+        
+        function loadSavedState() {
+            try {
+                const savedData = JSON.parse(localStorage.getItem('dashboardData'));
+                if (!savedData) {
+                    alert('No saved dashboard state found.');
+                    return;
+                }
+                
+                const dashboardDocument = dashboardFrame.contentDocument || dashboardFrame.contentWindow.document;
+                
+                // Set values for each saved input
+                Object.keys(savedData).forEach(id => {
+                    const input = dashboardDocument.getElementById(id);
+                    if (input) {
+                        input.value = savedData[id];
+                        // Trigger change event to update dashboard
+                        const event = new Event('change', { bubbles: true });
+                        input.dispatchEvent(event);
+                    }
+                });
+                
+                // Trigger any update functions the dashboard might have
+                if (dashboardFrame.contentWindow.updateDashboard) {
+                    dashboardFrame.contentWindow.updateDashboard();
+                }
+                
+                alert('Dashboard state loaded successfully!');
+            } catch (error) {
+                console.error('Error loading dashboard state:', error);
+                alert('Could not load dashboard state. This might be due to cross-origin restrictions.');
+            }
+        }
+
+        // Reset to default
+        resetBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to reset to default? This will remove all saved changes.')) {
+                localStorage.removeItem('dashboardData');
+                
+                // Reload the iframe to get fresh default state
+                dashboardFrame.src = dashboardFrame.src;
+                
+                alert('Dashboard reset to default state.');
+            }
+        });
+    </script>
+
+
+</body></html>
